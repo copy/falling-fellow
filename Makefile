@@ -2,7 +2,7 @@ USE_APPOP=-pp "camlp4o ./../../operator-test/appop.cmo"
 
 all: out.js
 
-out.js: *.ml js/*.js
+out.js: *.ml 
 	# flags: g -> debug information
 	#ocamlbuild -no-links -lflags '-g' -use-ocamlfind -pkgs js_of_ocaml,js_of_ocaml.syntax,containers -syntax camlp4o main.byte
 	ocamlbuild -no-links -use-ocamlfind -pkgs js_of_ocaml,js_of_ocaml.syntax,containers -syntax camlp4o main.byte
