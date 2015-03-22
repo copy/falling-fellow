@@ -25,17 +25,19 @@ type direction =
   | Left
   | Right
 
-let dx_of_direction = function
-  | Left -> -1
-  | Right -> 1
-
 let name_of_direction = function
   | Left -> "left"
   | Right -> "right"
 
+type state =
+  | Falling
+  | Standing
+
+
 let pressed_keys = ref []
 let player_pos = ref (100, 300)
 let player_direction = ref Left
+let player_state = ref Falling
 let player_width, player_height = 20, 32
 
 let object_types = [
@@ -155,7 +157,17 @@ let generate_objects cls =
 let objects =
   List.flatten (List.map generate_objects object_types)
 
-let player_image = make_image "src/player.png"
+let player_image_falling_left = make_image "img/player_falling_left.png"
+let player_image_falling_right = make_image "img/player_falling_right.png"
+let player_image_standing_left = make_image "img/player_standing_left.png"
+let player_image_standing_right = make_image "img/player_standing_right.png"
+
+let get_player_image state dir =
+  match state, dir with
+    | Standing, Left -> player_image_standing_left
+    | Standing, Right -> player_image_standing_right
+    | Falling, Left -> player_image_falling_left
+    | Falling, Right -> player_image_falling_right
 
 let debug_error str = Firebug.console##error (str);;
 let debug_print str = Firebug.console##log (str);;
@@ -242,7 +254,7 @@ let step ctx =
     height = player_height;
     deadly = false;
     blocking = false;
-    image = player_image
+    image = get_player_image !player_state !player_direction
   } in
   let dx =
   if CCList.Set.mem key_left !pressed_keys then
@@ -266,17 +278,19 @@ let step ctx =
     false
   end
   else
-    let state = if blocked then "standing" else "falling" in
-    player_object.image <- make_image (Printf.sprintf "img/player_%s_%s.png" state (name_of_direction !player_direction));
-    begin
-    if blocked then
-      fall_speed := initial_fall_speed
-    else
-      fall_speed := !fall_speed +. fall_accel
+  begin
+    if blocked then begin
+      fall_speed := initial_fall_speed;
+      player_state := Standing
+    end
+    else begin
+      fall_speed := !fall_speed +. fall_accel;
+      player_state := Falling
     end;
     redraw ctx player_object view_y;
     reposition_objects view_y;
     true
+  end
 
 
 let rec loop ctx =
