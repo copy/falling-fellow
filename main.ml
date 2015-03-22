@@ -11,6 +11,15 @@ type gameobject = {
   mutable image: string;
 }
 
+type gameobject_class = {
+  count: int;
+  width: int;
+  height: int;
+  deadly: bool;
+  blocking: bool;
+  image: string;
+}
+
 type direction =
   | Left
   | Right
@@ -28,10 +37,9 @@ let player_pos = ref (100, 300)
 let player_direction = ref Left
 let player_width, player_height = 20, 32
 
-let objects = ref [
+let object_types = [
   {
-    x = 500;
-    y = 700;
+    count = 5;
     width = 32;
     height = 16;
     deadly = false;
@@ -39,17 +47,7 @@ let objects = ref [
     image = "img/block.png";
   };
   {
-    x = 300;
-    y = 600;
-    width = 32;
-    height = 16;
-    deadly = false;
-    blocking = true;
-    image = "img/block.png";
-  };
-  {
-    x = 300;
-    y = 700;
+    count = 5;
     width = 8;
     height = 16;
     deadly = true;
@@ -57,8 +55,7 @@ let objects = ref [
     image = "img/spike.png";
   };
   {
-    x = 100;
-    y = 200;
+    count = 5;
     width = 16;
     height = 16;
     deadly = false;
@@ -77,6 +74,23 @@ let fall_speed = ref initial_fall_speed
 
 let key_left = 65
 let key_right = 68
+
+
+let generate_objects cls =
+  let gen _ =
+    {
+      width = cls.width;
+      height = cls.height;
+      blocking = cls.blocking;
+      deadly = cls.deadly;
+      image = cls.image;
+      x = Random.int width;
+      y = Random.int height;
+    } in
+  CCList.init cls.count gen
+
+let objects =
+  List.flatten (List.map generate_objects object_types)
 
 
 let debug_error str = Firebug.console##error (str);;
@@ -146,7 +160,7 @@ let redraw ctx player view_y =
     let y = float (o.y - view_y) in
     ctx##drawImage ((make_image o.image), x, y)
   in
-  List.iter draw_object !objects;
+  List.iter draw_object objects;
   draw_object player
 
 let reposition start_y o =
@@ -155,7 +169,7 @@ let reposition start_y o =
 
 let reposition_objects view_y =
   let out_of_view o = o.y + o.height < view_y in
-  let repositionable_objects = List.filter out_of_view !objects in
+  let repositionable_objects = List.filter out_of_view objects in
   List.iter (reposition view_y) repositionable_objects;
   ()
 
@@ -181,7 +195,7 @@ let step ctx =
   in
   let dx = dx * move_speed in
   let dy = int_of_float !fall_speed in
-  let (player_object, other_object) = trace_move player_object (dx, dy) !objects in
+  let (player_object, other_object) = trace_move player_object (dx, dy) objects in
   player_pos := (player_object.x, player_object.y);
   let dead, blocked =
   match other_object with
