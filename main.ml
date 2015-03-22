@@ -56,6 +56,15 @@ let objects = ref [
     blocking = true;
     image = "img/spike.png";
   };
+  {
+    x = 100;
+    y = 200;
+    width = 16;
+    height = 16;
+    deadly = false;
+    blocking = false;
+    image = "img/dirt.png";
+  };
 ]
 
 let width = 800
@@ -121,9 +130,11 @@ let rec trace_move obj dir objects =
       x = obj.x + dx;
       y = obj.y + dy;
     } in
+    let dir' = (fst dir - dx, snd dir - dy) in
     match intersecting_object obj' objects with
       | None ->
-        let dir' = (fst dir - dx, snd dir - dy) in
+        trace_move obj' dir' objects
+      | Some other_object when not other_object.blocking  ->
         trace_move obj' dir' objects
       | Some other_object ->
         (obj, Some other_object)
@@ -174,8 +185,7 @@ let step ctx =
   player_pos := (player_object.x, player_object.y);
   let dead, blocked =
   match other_object with
-    | Some obj when obj.deadly -> true, false
-    | Some obj -> false, true
+    | Some obj -> obj.deadly, obj.blocking
     | None -> false, false
   in
   if dead then begin
