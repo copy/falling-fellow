@@ -178,6 +178,9 @@ let isign n =
   else if n < 0 then -1
   else 0
 
+let modulo x m =
+  (x mod m + m) mod m
+
 let catching_bind t next handle_exn =
   Lwt.bind t (fun () -> Lwt.catch next (fun exn -> handle_exn exn; Lwt.return_unit))
 
@@ -267,7 +270,7 @@ let step ctx =
   let dx = dx * move_speed in
   let dy = int_of_float !fall_speed in
   let (player_object, other_object) = trace_move player_object (dx, dy) objects in
-  player_pos := (player_object.x, player_object.y);
+  player_pos := (modulo player_object.x width, player_object.y);
   let dead, blocked =
   match other_object with
     | Some obj -> obj.deadly, obj.blocking
