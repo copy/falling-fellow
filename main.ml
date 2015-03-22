@@ -8,6 +8,7 @@ type gameobject = {
   height: int;
   deadly: bool;
   blocking: bool;
+  is_portal: bool;
   mutable image: Dom_html.imageElement Js.t;
 }
 
@@ -19,6 +20,7 @@ type gameobject_class = {
   deadly: bool;
   blocking: bool;
   image: string;
+  portal: bool;
 }
 
 type direction =
@@ -47,6 +49,7 @@ let object_types = [
     height = 16;
     deadly = false;
     blocking = true;
+    portal = false;
     image = "img/block1.png";
   };
   {
@@ -55,6 +58,7 @@ let object_types = [
     height = 16;
     deadly = false;
     blocking = true;
+    portal = false;
     image = "img/block2.png";
   };
   {
@@ -63,6 +67,7 @@ let object_types = [
     height = 16;
     deadly = false;
     blocking = true;
+    portal = false;
     image = "img/small_block1.png";
   };
   {
@@ -71,14 +76,16 @@ let object_types = [
     height = 16;
     deadly = false;
     blocking = true;
+    portal = false;
     image = "img/small_block2.png";
   };
   {
-    count = 15;
+    count = 20;
     width = 8;
     height = 16;
     deadly = true;
     blocking = true;
+    portal = false;
     image = "img/spike.png";
   };
   {
@@ -87,7 +94,17 @@ let object_types = [
     height = 16;
     deadly = true;
     blocking = true;
+    portal = false;
     image = "img/spikes.png";
+  };
+  {
+    count = 3;
+    width = 16;
+    height = 32;
+    deadly = true;
+    blocking = true;
+    portal = false;
+    image = "img/big_spike.png";
   };
   {
     count = 5;
@@ -95,6 +112,7 @@ let object_types = [
     height = 16;
     deadly = false;
     blocking = false;
+    portal = false;
     image = "img/dirt2.png";
   };
   {
@@ -103,6 +121,7 @@ let object_types = [
     height = 16;
     deadly = false;
     blocking = false;
+    portal = false;
     image = "img/dirt3.png";
   };
   {
@@ -111,14 +130,16 @@ let object_types = [
     height = 16;
     deadly = false;
     blocking = false;
+    portal = false;
     image = "img/dirt4.png";
   };
   {
-    count = 1;
-    width = 24;
-    height = 32;
+    count = 2;
+    width = 48;
+    height = 64;
     deadly = false;
-    blocking = false;
+    blocking = true;
+    portal = true;
     image = "img/portal.png";
   };
 ]
@@ -148,6 +169,7 @@ let generate_objects cls =
       height = cls.height;
       blocking = cls.blocking;
       deadly = cls.deadly;
+      is_portal = cls.portal;
       image = image;
       x = Random.int width;
       y = Random.int height;
@@ -252,6 +274,11 @@ let update_score s =
   let c = Js.Opt.get (Dom_html.CoerceTo.element c) (fun () -> failwith "no score") in
   c##textContent <- Js.Opt.return (Js.string s)
 
+let find_other_portal portal objects =
+  let is_other_portal p = p.is_portal && p != portal in
+  let portal' = List.find is_other_portal objects in
+  (portal'.x, portal'.y + portal.height)
+
 let step ctx =
   let player_x, player_y = !player_pos in
   let view_y = player_y - height / 2 in
@@ -262,6 +289,7 @@ let step ctx =
     height = player_height;
     deadly = false;
     blocking = false;
+    is_portal = false;
     image = get_player_image !player_state !player_direction
   } in
   let dx =
@@ -276,10 +304,10 @@ let step ctx =
   let dy = int_of_float !fall_speed in
   let (player_object, other_object) = trace_move player_object (dx, dy) objects in
   player_pos := (modulo player_object.x width, player_object.y);
-  let dead, blocked =
+  let dead, blocked, teleported =
   match other_object with
-    | Some obj -> obj.deadly, obj.blocking
-    | None -> false, false
+    | Some obj -> obj.deadly, obj.blocking, obj.is_portal
+    | None -> false, false, false
   in
   if dead then begin
     Dom_html.window##alert (Js.string "You died! Try again");
@@ -287,7 +315,10 @@ let step ctx =
   end
   else
   begin
-    if blocked then begin
+    if teleported then match other_object with
+      | Some obj -> player_pos := find_other_portal obj objects
+      | _ -> ()
+    else if blocked then begin
       fall_speed := initial_fall_speed;
       player_state := Standing
     end
