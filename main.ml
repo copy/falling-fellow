@@ -160,21 +160,28 @@ let step ctx =
   let dy = int_of_float !fall_speed in
   let (player_object, other_object) = trace_move player_object (dx, dy) !objects in
   player_pos := (player_object.x, player_object.y);
+  let dead, blocked =
   match other_object with
-    | Some obj when obj.deadly ->
-      debug_print (Js.string "test");
-      Dom_html.window##alert (Js.string "You died! Try again");
-      false
-    | Some obj ->
-      player_object.image <- Printf.sprintf "img/player_standing_%s.png" (name_of_direction !player_direction);
-      fall_speed := initial_fall_speed;
-      redraw ctx player_object;
-      true
-    | None ->
-      player_object.image <- Printf.sprintf "img/player_falling_%s.png" (name_of_direction !player_direction);
-      fall_speed := !fall_speed +. fall_accel;
-      redraw ctx player_object;
-      true
+    | Some obj when obj.deadly -> true, false
+    | Some obj -> false, true
+    | None -> false, false
+  in
+  if dead then begin
+    Dom_html.window##alert (Js.string "You died! Try again");
+    false
+  end
+  else
+    let state = if blocked then "standing" else "falling" in
+    player_object.image <- Printf.sprintf "img/player_%s_%s.png" state (name_of_direction !player_direction);
+    begin
+    if blocked then
+      fall_speed := initial_fall_speed
+    else
+      fall_speed := !fall_speed +. fall_accel
+    end;
+    redraw ctx player_object;
+    true
+
 
 let rec loop ctx =
   catching_bind
