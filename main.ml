@@ -32,6 +32,14 @@ let objects = ref [
     deadly = false;
     image = "img/block.png";
   };
+  {
+    x = 300;
+    y = 700;
+    width = 8;
+    height = 16;
+    deadly = true;
+    image = "img/spike.png";
+  };
 ]
 
 let width = 800
@@ -48,7 +56,7 @@ let debug_error str = Firebug.console##error (str);;
 let debug_print str = Firebug.console##log (str);;
 let print_exn exn = debug_error (Js.string (Printexc.to_string exn))
 
-let isign n = 
+let isign n =
   if n > 0 then 1
   else if n < 0 then -1
   else 0
@@ -62,13 +70,16 @@ let intersects o1 o2 =
   o1.y < o2.y + o2.height &&
   o1.y + o1.height > o2.y
 
-let any_intersects obj objects =
-  List.exists (fun o -> intersects o obj) objects
+let intersecting_object obj objects =
+  try
+    Some (List.find (fun o -> intersects o obj) objects)
+  with
+    Not_found -> None
 
 let get_canvas () =
   let d = Dom_html.window##document in
   let c = Dom_html.getElementById "c" in
-  let c = Js.Opt.get (Dom_html.CoerceTo.canvas c) (fun () -> failwith "no canvas") in 
+  let c = Js.Opt.get (Dom_html.CoerceTo.canvas c) (fun () -> failwith "no canvas") in
   let ctx = c##getContext (Dom_html._2d_) in
   c##width <- width;
   c##height <- height;
@@ -81,7 +92,7 @@ let make_image src =
 
 let rec trace_move obj dir objects =
   if dir = (0, 0) then
-    obj
+    (obj, None)
   else
     let dx = isign (fst dir) in
     let dy = if dx = 0 then
@@ -93,11 +104,12 @@ let rec trace_move obj dir objects =
       x = obj.x + dx;
       y = obj.y + dy;
     } in
-    if any_intersects obj' objects then
-      obj
-    else
-      let dir' = (fst dir - dx, snd dir - dy) in
-      trace_move obj' dir' objects
+    match intersecting_object obj' objects with
+      | None ->
+        let dir' = (fst dir - dx, snd dir - dy) in
+        trace_move obj' dir' objects
+      | Some other_object ->
+        (obj, Some other_object)
 
 let redraw ctx player =
   ctx##clearRect (0.0, 0.0, float width, float height);
@@ -132,15 +144,21 @@ let step ctx =
   in
   let dx = dx * move_speed in
   let dy = !fall_speed in
-  let player_object = trace_move player_object (dx, dy) !objects in
-  player_pos := (player_object.x, player_object.y);
-  redraw ctx player_object;
-  ()
+  let (player_object, other_object) = trace_move player_object (dx, dy) !objects in
+  match other_object with
+    | Some obj when obj.deadly ->
+      debug_print (Js.string "test");
+      Dom_html.window##alert (Js.string "You died! Try again");
+      false
+    | _ ->
+      player_pos := (player_object.x, player_object.y);
+      redraw ctx player_object;
+      true
 
 let rec loop ctx =
   catching_bind
     (Lwt_js.sleep 0.030)
-    (fun () -> step ctx; loop ctx)
+    (fun () -> if step ctx then loop ctx else Lwt.return_unit)
     print_exn
 
 let start _ =
