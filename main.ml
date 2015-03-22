@@ -24,6 +24,10 @@ let objects =  ref [
 let width = 800
 let height = 600
 
+let move_speed = 6
+
+let key_left = 65
+let key_right = 68
 
 
 let debug_error str = Firebug.console##error (str);;
@@ -69,8 +73,16 @@ let redraw ctx =
 
 let step ctx =
   redraw ctx;
+  let dx =
+  if CCList.Set.mem key_left !pressed_keys then
+    -1
+  else if CCList.Set.mem key_right !pressed_keys then
+    1
+  else
+    0
+  in
   let player_x, player_y = !player_pos in
-  player_pos := (player_x, player_y + 5);
+  player_pos := (player_x + dx * move_speed, player_y + 5);
   ()
 
 let rec loop ctx =
@@ -86,7 +98,7 @@ let start _ =
 
 let keydown e =
   let key = e##keyCode in
-  debug_print key;
+  (* debug_print key; *)
   pressed_keys := key :: !pressed_keys;
   Js._true
 
