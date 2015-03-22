@@ -4,14 +4,12 @@ all: out.js
 
 out.js: *.ml js/*.js
 	# flags: g -> debug information
-	ocamlbuild -no-links -lflags '-g' -use-ocamlfind -pkgs js_of_ocaml,js_of_ocaml.syntax,bigarray,containers -syntax camlp4o main.byte
+	#ocamlbuild -no-links -lflags '-g' -use-ocamlfind -pkgs js_of_ocaml,js_of_ocaml.syntax,containers -syntax camlp4o main.byte
+	ocamlbuild -no-links -use-ocamlfind -pkgs js_of_ocaml,js_of_ocaml.syntax,containers -syntax camlp4o main.byte
 
 
-	#js_of_ocaml --debuginfo --sourcemap _build/main.byte
-	#js_of_ocaml _build/main.byte
-	#js_of_ocaml --debuginfo --sourcemap _build/main.byte
-	#js_of_ocaml --opt 3 test.js _build/main.byte -o out.js
-	js_of_ocaml --opt 1 --enable pretty --sourcemap js/lib.js _build/main.byte -o out.js
+	js_of_ocaml --opt 3 _build/main.byte -o out.js
+	#js_of_ocaml --opt 1 --enable pretty --sourcemap js/lib.js _build/main.byte -o out.js
 
 
 minify: out.js
