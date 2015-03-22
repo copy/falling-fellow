@@ -37,7 +37,7 @@ type state =
 
 
 let pressed_keys = ref []
-let player_pos = ref (100, 300)
+let player_pos = ref (450, 300)
 let player_direction = ref Left
 let player_state = ref Falling
 let player_width, player_height = 20, 32
@@ -126,7 +126,7 @@ let object_types = [
   };
   {
     count = 2;
-    width = 8;
+    width = 32;
     height = 16;
     deadly = true;
     blocking = true;
