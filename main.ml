@@ -80,6 +80,24 @@ let object_types = [
     image = "img/small_block2.png";
   };
   {
+    count = 3;
+    width = 16;
+    height = 16;
+    deadly = true;
+    blocking = true;
+    portal = false;
+    image = "img/flame1.png";
+  };
+  {
+    count = 2;
+    width = 16;
+    height = 24;
+    deadly = true;
+    blocking = true;
+    portal = false;
+    image = "img/flame2.png";
+  };
+  {
     count = 20;
     width = 8;
     height = 16;
@@ -132,6 +150,15 @@ let object_types = [
     blocking = false;
     portal = false;
     image = "img/dirt4.png";
+  };
+  {
+    count = 3;
+    width = 16;
+    height = 16;
+    deadly = false;
+    blocking = false;
+    portal = false;
+    image = "img/noise1.png";
   };
   {
     count = 2;
