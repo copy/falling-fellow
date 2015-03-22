@@ -8,8 +8,9 @@ type gameobject = {
   height: int;
   deadly: bool;
   blocking: bool;
-  mutable image: string;
+  mutable image: Dom_html.imageElement Js.t;
 }
+
 
 type gameobject_class = {
   count: int;
@@ -39,15 +40,39 @@ let player_width, player_height = 20, 32
 
 let object_types = [
   {
-    count = 5;
+    count = 1;
     width = 32;
     height = 16;
     deadly = false;
     blocking = true;
-    image = "img/block.png";
+    image = "img/block1.png";
   };
   {
-    count = 5;
+    count = 1;
+    width = 32;
+    height = 16;
+    deadly = false;
+    blocking = true;
+    image = "img/block2.png";
+  };
+  {
+    count = 3;
+    width = 16;
+    height = 16;
+    deadly = false;
+    blocking = true;
+    image = "img/small_block1.png";
+  };
+  {
+    count = 3;
+    width = 16;
+    height = 16;
+    deadly = false;
+    blocking = true;
+    image = "img/small_block2.png";
+  };
+  {
+    count = 15;
     width = 8;
     height = 16;
     deadly = true;
@@ -55,12 +80,44 @@ let object_types = [
     image = "img/spike.png";
   };
   {
+    count = 2;
+    width = 8;
+    height = 16;
+    deadly = true;
+    blocking = true;
+    image = "img/spikes.png";
+  };
+  {
     count = 5;
     width = 16;
     height = 16;
     deadly = false;
     blocking = false;
-    image = "img/dirt.png";
+    image = "img/dirt2.png";
+  };
+  {
+    count = 5;
+    width = 16;
+    height = 16;
+    deadly = false;
+    blocking = false;
+    image = "img/dirt3.png";
+  };
+  {
+    count = 5;
+    width = 16;
+    height = 16;
+    deadly = false;
+    blocking = false;
+    image = "img/dirt4.png";
+  };
+  {
+    count = 1;
+    width = 24;
+    height = 32;
+    deadly = false;
+    blocking = false;
+    image = "img/portal.png";
   };
 ]
 
@@ -76,14 +133,20 @@ let key_left = 65
 let key_right = 68
 
 
+let make_image src =
+  let img = Dom_html.createImg Dom_html.document in
+  img##src <- Js.string src;
+  img
+
 let generate_objects cls =
+  let image = make_image cls.image in
   let gen _ =
     {
       width = cls.width;
       height = cls.height;
       blocking = cls.blocking;
       deadly = cls.deadly;
-      image = cls.image;
+      image = image;
       x = Random.int width;
       y = Random.int height;
     } in
@@ -92,6 +155,7 @@ let generate_objects cls =
 let objects =
   List.flatten (List.map generate_objects object_types)
 
+let player_image = make_image "src/player.png"
 
 let debug_error str = Firebug.console##error (str);;
 let debug_print str = Firebug.console##log (str);;
@@ -125,11 +189,6 @@ let get_canvas () =
   c##height <- height;
   ctx
 
-let make_image src =
-  let img = Dom_html.createImg Dom_html.document in
-  img##src <- Js.string src;
-  img
-
 let rec trace_move obj dir objects =
   if dir = (0, 0) then
     (obj, None)
@@ -158,7 +217,7 @@ let redraw ctx player view_y =
   let draw_object o =
     let x = float o.x in
     let y = float (o.y - view_y) in
-    ctx##drawImage ((make_image o.image), x, y)
+    ctx##drawImage (o.image, x, y)
   in
   List.iter draw_object objects;
   draw_object player
@@ -183,7 +242,7 @@ let step ctx =
     height = player_height;
     deadly = false;
     blocking = false;
-    image = ""
+    image = player_image
   } in
   let dx =
   if CCList.Set.mem key_left !pressed_keys then
@@ -208,7 +267,7 @@ let step ctx =
   end
   else
     let state = if blocked then "standing" else "falling" in
-    player_object.image <- Printf.sprintf "img/player_%s_%s.png" state (name_of_direction !player_direction);
+    player_object.image <- make_image (Printf.sprintf "img/player_%s_%s.png" state (name_of_direction !player_direction));
     begin
     if blocked then
       fall_speed := initial_fall_speed
