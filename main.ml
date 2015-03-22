@@ -247,6 +247,11 @@ let reposition_objects view_y =
   List.iter (reposition view_y) repositionable_objects;
   ()
 
+let update_score s =
+  let c = Dom_html.getElementById "score" in
+  let c = Js.Opt.get (Dom_html.CoerceTo.element c) (fun () -> failwith "no score") in
+  c##textContent <- Js.Opt.return (Js.string s)
+
 let step ctx =
   let player_x, player_y = !player_pos in
   let view_y = player_y - height / 2 in
@@ -291,6 +296,7 @@ let step ctx =
       player_state := Falling
     end;
     redraw ctx player_object view_y;
+    update_score (string_of_int player_y);
     reposition_objects view_y;
     true
   end
