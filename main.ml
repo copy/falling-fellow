@@ -80,6 +80,24 @@ let object_types = [
     image = "img/small_block2.png";
   };
   {
+    count = 1;
+    width = 16;
+    height = 16;
+    deadly = false;
+    blocking = true;
+    portal = false;
+    image = "img/green_block.png";
+  };
+  {
+    count = 1;
+    width = 16;
+    height = 16;
+    deadly = false;
+    blocking = true;
+    portal = false;
+    image = "img/rock.png";
+  };
+  {
     count = 3;
     width = 16;
     height = 16;
@@ -174,7 +192,7 @@ let object_types = [
 let width = 800
 let height = 600
 
-let initial_fall_speed = 3.0
+let initial_fall_speed = 4.0
 let fall_accel = 0.02
 let move_speed = 4
 let fall_speed = ref initial_fall_speed
@@ -205,6 +223,8 @@ let generate_objects cls =
 
 let objects =
   List.flatten (List.map generate_objects object_types)
+
+let background_image = make_image "img/background.png"
 
 let player_image_falling_left = make_image "img/player_falling_left.png"
 let player_image_falling_right = make_image "img/player_falling_right.png"
@@ -240,10 +260,7 @@ let intersects o1 o2 =
   o1.y + o1.height > o2.y
 
 let intersecting_object obj objects =
-  try
-    Some (List.find (fun o -> intersects o obj) objects)
-  with
-    Not_found -> None
+  CCOpt.map snd (CCList.find_idx (fun o -> intersects o obj) objects)
 
 let get_canvas () =
   let c = Dom_html.getElementById "c" in
@@ -271,17 +288,18 @@ let rec trace_move obj dir objects =
     match intersecting_object obj' objects with
       | None ->
         trace_move obj' dir' objects
-      | Some other_object when not other_object.blocking  ->
+      | Some other_object when not other_object.blocking ->
         trace_move obj' dir' objects
       | Some other_object ->
         (obj, Some other_object)
 
 let redraw ctx player view_y =
-  ctx##clearRect (0.0, 0.0, float width, float height);
+  ctx##drawImage (background_image, 0.0, 0.0);
   let draw_object o =
     let x = float o.x in
     let y = float (o.y - view_y) in
-    ctx##drawImage (o.image, x, y)
+    if y < float height then
+      ctx##drawImage (o.image, x, y)
   in
   List.iter draw_object objects;
   draw_object player
@@ -293,8 +311,7 @@ let reposition start_y o =
 let reposition_objects view_y =
   let out_of_view o = o.y + o.height < view_y in
   let repositionable_objects = List.filter out_of_view objects in
-  List.iter (reposition view_y) repositionable_objects;
-  ()
+  List.iter (reposition view_y) repositionable_objects
 
 let update_score s =
   let c = Dom_html.getElementById "score" in
@@ -308,7 +325,7 @@ let find_other_portal portal objects =
 
 let step ctx =
   let player_x, player_y = !player_pos in
-  let view_y = player_y - height / 2 in
+  let view_y = player_y - height / 3 in
   let player_object = {
     x = player_x;
     y = player_y;
@@ -320,21 +337,22 @@ let step ctx =
     image = get_player_image !player_state !player_direction
   } in
   let dx =
-  if CCList.Set.mem key_left !pressed_keys then
-    (player_direction := Left; -1)
-  else if CCList.Set.mem key_right !pressed_keys then
-    (player_direction := Right; 1)
-  else
-    0
+    if CCList.Set.mem key_left !pressed_keys then -1
+    else if CCList.Set.mem key_right !pressed_keys then 1
+    else 0
   in
+  if dx = -1 then
+    player_direction := Left
+  else if dx = 1 then
+    player_direction := Right;
   let dx = dx * move_speed in
   let dy = int_of_float !fall_speed in
   let (player_object, other_object) = trace_move player_object (dx, dy) objects in
   player_pos := (modulo player_object.x width, player_object.y);
   let dead, blocked, teleported =
-  match other_object with
-    | Some obj -> obj.deadly, obj.blocking, obj.is_portal
-    | None -> false, false, false
+    match other_object with
+      | Some obj -> obj.deadly, obj.blocking, obj.is_portal
+      | None -> false, false, false
   in
   update_score (string_of_int player_y);
   if dead then begin
