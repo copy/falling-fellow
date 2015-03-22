@@ -336,8 +336,9 @@ let step ctx =
     | Some obj -> obj.deadly, obj.blocking, obj.is_portal
     | None -> false, false, false
   in
+  update_score (string_of_int player_y);
   if dead then begin
-    Dom_html.window##alert (Js.string "You died! Try again");
+    Dom_html.window##alert (Js.string ("You died! Your score is: " ^ string_of_int player_y));
     false
   end
   else
@@ -354,7 +355,6 @@ let step ctx =
       player_state := Falling
     end;
     redraw ctx player_object view_y;
-    update_score (string_of_int player_y);
     reposition_objects view_y;
     true
   end
