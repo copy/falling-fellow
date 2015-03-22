@@ -7,6 +7,7 @@ type gameobject = {
   width: int;
   height: int;
   deadly: bool;
+  blocking: bool;
   mutable image: string;
 }
 
@@ -34,6 +35,7 @@ let objects = ref [
     width = 32;
     height = 16;
     deadly = false;
+    blocking = true;
     image = "img/block.png";
   };
   {
@@ -42,6 +44,7 @@ let objects = ref [
     width = 32;
     height = 16;
     deadly = false;
+    blocking = true;
     image = "img/block.png";
   };
   {
@@ -50,6 +53,7 @@ let objects = ref [
     width = 8;
     height = 16;
     deadly = true;
+    blocking = true;
     image = "img/spike.png";
   };
 ]
@@ -91,7 +95,6 @@ let intersecting_object obj objects =
     Not_found -> None
 
 let get_canvas () =
-  let d = Dom_html.window##document in
   let c = Dom_html.getElementById "c" in
   let c = Js.Opt.get (Dom_html.CoerceTo.canvas c) (fun () -> failwith "no canvas") in
   let ctx = c##getContext (Dom_html._2d_) in
@@ -125,27 +128,36 @@ let rec trace_move obj dir objects =
       | Some other_object ->
         (obj, Some other_object)
 
-let redraw ctx player =
+let redraw ctx player view_y =
   ctx##clearRect (0.0, 0.0, float width, float height);
-  let player_x, player_y = !player_pos in
-  let view_x = 0 in
-  let view_y = player_y - height / 2 in
   let draw_object o =
-    let x = float (o.x - view_x) in
+    let x = float o.x in
     let y = float (o.y - view_y) in
     ctx##drawImage ((make_image o.image), x, y)
   in
   List.iter draw_object !objects;
   draw_object player
 
+let reposition start_y o =
+  o.x <- Random.int width;
+  o.y <- Random.int height + start_y + height
+
+let reposition_objects view_y =
+  let out_of_view o = o.y + o.height < view_y in
+  let repositionable_objects = List.filter out_of_view !objects in
+  List.iter (reposition view_y) repositionable_objects;
+  ()
 
 let step ctx =
+  let player_x, player_y = !player_pos in
+  let view_y = player_y - height / 2 in
   let player_object = {
-    x = fst !player_pos;
-    y = snd !player_pos;
+    x = player_x;
+    y = player_y;
     width = player_width;
     height = player_height;
     deadly = false;
+    blocking = false;
     image = ""
   } in
   let dx =
@@ -179,7 +191,8 @@ let step ctx =
     else
       fall_speed := !fall_speed +. fall_accel
     end;
-    redraw ctx player_object;
+    redraw ctx player_object view_y;
+    reposition_objects view_y;
     true
 
 
