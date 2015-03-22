@@ -2,17 +2,29 @@
 
 
 type gameobject = {
-  x: int;
-  y: int;
+  mutable x: int;
+  mutable y: int;
   width: int;
   height: int;
   deadly: bool;
-  image: string;
+  mutable image: string;
 }
 
+type direction =
+  | Left
+  | Right
+
+let dx_of_direction = function
+  | Left -> -1
+  | Right -> 1
+
+let name_of_direction = function
+  | Left -> "left"
+  | Right -> "right"
 
 let pressed_keys = ref []
 let player_pos = ref (100, 300)
+let player_direction = ref Left
 let player_width, player_height = 20, 32
 
 let objects = ref [
@@ -45,8 +57,10 @@ let objects = ref [
 let width = 800
 let height = 600
 
-let move_speed = 6
-let fall_speed = ref 6
+let initial_fall_speed = 3.0
+let fall_accel = 0.02
+let move_speed = 4
+let fall_speed = ref initial_fall_speed
 
 let key_left = 65
 let key_right = 68
@@ -132,32 +146,39 @@ let step ctx =
     width = player_width;
     height = player_height;
     deadly = false;
-    image = "img/player.png"
+    image = ""
   } in
   let dx =
   if CCList.Set.mem key_left !pressed_keys then
-    -1
+    (player_direction := Left; -1)
   else if CCList.Set.mem key_right !pressed_keys then
-    1
+    (player_direction := Right; 1)
   else
     0
   in
   let dx = dx * move_speed in
-  let dy = !fall_speed in
+  let dy = int_of_float !fall_speed in
   let (player_object, other_object) = trace_move player_object (dx, dy) !objects in
+  player_pos := (player_object.x, player_object.y);
   match other_object with
     | Some obj when obj.deadly ->
       debug_print (Js.string "test");
       Dom_html.window##alert (Js.string "You died! Try again");
       false
-    | _ ->
-      player_pos := (player_object.x, player_object.y);
+    | Some obj ->
+      player_object.image <- Printf.sprintf "img/player_standing_%s.png" (name_of_direction !player_direction);
+      fall_speed := initial_fall_speed;
+      redraw ctx player_object;
+      true
+    | None ->
+      player_object.image <- Printf.sprintf "img/player_falling_%s.png" (name_of_direction !player_direction);
+      fall_speed := !fall_speed +. fall_accel;
       redraw ctx player_object;
       true
 
 let rec loop ctx =
   catching_bind
-    (Lwt_js.sleep 0.030)
+    (Lwt_js.sleep 0.016)
     (fun () -> if step ctx then loop ctx else Lwt.return_unit)
     print_exn
 
